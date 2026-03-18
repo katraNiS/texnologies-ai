@@ -21,8 +21,16 @@ st.set_page_config(page_title="Data Science & ML Web App", layout="wide")
 st.markdown(
     """
     <style>
-    .block-container {padding-top: 1.2rem; padding-bottom: 2rem;}
-    [data-testid="stMetric"] {background: #f5f7fb; padding: 0.6rem; border-radius: 0.5rem;}
+    .block-container {padding-top: 1rem; padding-bottom: 2rem; max-width: 1400px;}
+    [data-testid="stMetric"] {
+        background: #f7f9fc;
+        padding: 0.65rem;
+        border-radius: 0.6rem;
+        border: 1px solid #e8edf5;
+    }
+    [data-testid="stHorizontalBlock"] > div:has(> [data-testid="stMetric"]) {
+        gap: 0.5rem;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -136,6 +144,17 @@ def df_to_csv_bytes(df: pd.DataFrame) -> bytes:
     return df.to_csv(index=False).encode("utf-8")
 
 
+def style_fig(fig, height: int = 430):
+    """Apply consistent visual style to Plotly figures."""
+    fig.update_layout(
+        template="plotly_white",
+        height=height,
+        margin=dict(l=20, r=20, t=55, b=20),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    return fig
+
+
 st.title("Project 1: Data Science & Machine Learning Web Application")
 st.caption(
     "Pipeline aligned with assignment stages: Data Loading/Preprocessing, EDA, and ML Pipeline."
@@ -202,11 +221,20 @@ if df_raw.empty:
     st.error("No rows available after the selected season filter. Change sidebar settings.")
     st.stop()
 
-tabs = st.tabs(["Stage 1: Preprocessing", "Stage 2: EDA", "Stage 3: ML Pipeline"])
+st.sidebar.divider()
+st.sidebar.subheader("Current Dataset")
+st.sidebar.caption(f"File: `{uploaded_file.name}`")
+st.sidebar.caption(f"Rows: {df_raw.shape[0]} | Columns: {df_raw.shape[1]}")
+if active_seasons is not None:
+    st.sidebar.caption(f"Seasons: {active_seasons}")
+if is_player_per_game_schema:
+    st.sidebar.caption(f"Goal: {goal_mode}")
+
+tabs = st.tabs(["1. Preprocessing", "2. EDA", "3. ML Pipeline"])
 
 with tabs[0]:
     st.subheader("Load Data and Preprocess")
-    with st.expander("What to do in this stage", expanded=True):
+    with st.expander("What to do in this stage", expanded=False):
         st.markdown(
             """
             1. Select your `target` (what you want to predict).
@@ -220,10 +248,21 @@ with tabs[0]:
     col_b.metric("Columns", int(df_raw.shape[1]))
     col_c.metric("Total Missing Values", int(df_raw.isna().sum().sum()))
 
-    st.write("Data types")
-    st.dataframe(df_raw.dtypes.astype(str).rename("dtype"), use_container_width=True)
-    st.write("First rows")
-    st.dataframe(df_raw.head(), use_container_width=True)
+    preview_rows = st.slider(
+        "Preview rows",
+        min_value=5,
+        max_value=min(50, max(5, int(df_raw.shape[0]))),
+        value=min(10, max(5, int(df_raw.shape[0]))),
+        step=5,
+        help="Adjust how many rows you want to preview.",
+    )
+    data_col1, data_col2 = st.columns([1, 2])
+    with data_col1:
+        st.write("Data types")
+        st.dataframe(df_raw.dtypes.astype(str).rename("dtype"), use_container_width=True, height=320)
+    with data_col2:
+        st.write("First rows")
+        st.dataframe(df_raw.head(preview_rows), use_container_width=True, height=320)
     if active_seasons is not None:
         st.caption(f"Dataset filtered to recent seasons: {active_seasons}")
 
@@ -282,6 +321,11 @@ with tabs[0]:
             help="One-Hot is safer for non-ordered categories (e.g., team names).",
         )
 
+    setup_a, setup_b, setup_c = st.columns(3)
+    setup_a.caption(f"Target: `{target_col}`")
+    setup_b.caption(f"Features selected: `{len(selected_features)}`")
+    setup_c.caption(f"Missing strategy: `{missing_strategy}`")
+
     model_df = df_raw[[target_col] + selected_features].copy()
     model_df = apply_missing_values(model_df, missing_strategy)
     eda_df = model_df.copy()
@@ -309,7 +353,7 @@ with tabs[0]:
 
 with tabs[1]:
     st.subheader("Exploratory Data Analysis (EDA)")
-    with st.expander("What to do in this stage", expanded=True):
+    with st.expander("What to do in this stage", expanded=False):
         st.markdown(
             """
             1. Check feature distributions and outliers.
@@ -331,7 +375,7 @@ with tabs[1]:
             title=f"Distribution of {target_col}",
         )
         fig_cls.update_layout(xaxis_tickangle=-30)
-        st.plotly_chart(fig_cls, use_container_width=True)
+        st.plotly_chart(style_fig(fig_cls, 390), use_container_width=True)
         plot_comment("Tall bars mean more samples in that class. Check if one class dominates.")
 
     st.write("Feature distributions (histograms)")
@@ -361,7 +405,7 @@ with tabs[1]:
                 marginal="box",
                 title=f"Histogram: {feat}",
             )
-            st.plotly_chart(fig_hist, use_container_width=True)
+            st.plotly_chart(style_fig(fig_hist, 380), use_container_width=True)
             plot_comment("Look for skewness and extreme values. The box marginal shows spread and outliers.")
     else:
         st.info("Select at least one numeric feature for histogram plots.")
@@ -387,7 +431,7 @@ with tabs[1]:
                 title=f"{feat} by {target_col}",
             )
             fig_box.update_layout(xaxis_tickangle=-30, showlegend=False)
-            st.plotly_chart(fig_box, use_container_width=True)
+            st.plotly_chart(style_fig(fig_box, 390), use_container_width=True)
             plot_comment("Compare medians and spread across classes. Bigger separation means stronger predictive signal.")
     elif box_features:
         st.info("Boxplots by target are shown when target has <= 20 unique values.")
@@ -404,7 +448,7 @@ with tabs[1]:
             title="Feature Correlations",
             aspect="auto",
         )
-        st.plotly_chart(fig_corr, use_container_width=True)
+        st.plotly_chart(style_fig(fig_corr, 500), use_container_width=True)
         plot_comment("Values near +1/-1 indicate strong positive/negative linear relationships.")
     else:
         st.info("Need at least 2 numeric features for correlation heatmap.")
@@ -469,7 +513,7 @@ with tabs[1]:
                 title="PCA Projection (2D)",
                 hover_data=[col for col in ["player", "season", "target"] if col in pca_plot_df.columns],
             )
-            st.plotly_chart(fig_pca, use_container_width=True)
+            st.plotly_chart(style_fig(fig_pca, 520), use_container_width=True)
             plot_comment("Points close together have similar feature profiles after dimensionality reduction.")
             st.caption(
                 f"Explained variance ratio: PC1={pca.explained_variance_ratio_[0]:.2f}, "
@@ -482,7 +526,7 @@ with tabs[1]:
 
 with tabs[2]:
     st.subheader("ML Pipeline")
-    with st.expander("What to do in this stage", expanded=True):
+    with st.expander("What to do in this stage", expanded=False):
         st.markdown(
             """
             1. Train two supervised algorithms and compare metrics.
@@ -490,7 +534,8 @@ with tabs[2]:
             3. Run clustering and compare `k` values with silhouette/elbow plots.
             """
         )
-    st.write("Process 1: Supervised Learning (algorithm comparison)")
+    st.markdown("#### Process 1: Supervised Learning")
+    st.caption("Train and compare two algorithms on the selected target.")
 
     ml_df = pd.concat([X, y.rename("target")], axis=1).dropna()
     if ml_df.shape[0] < 10:
@@ -567,13 +612,15 @@ with tabs[2]:
         float(test_size),
         tuple(sorted(supervised_params.items())),
     )
-    run_supervised = st.button(
-        "Run Supervised Training",
-        type="primary",
-        use_container_width=True,
-        key="run_supervised_btn",
-        help="Click to train models with the current settings.",
-    )
+    run_col, _ = st.columns([1, 1.2])
+    with run_col:
+        run_supervised = st.button(
+            "Run Supervised Training",
+            type="primary",
+            use_container_width=True,
+            key="run_supervised_btn",
+            help="Click to train models with the current settings.",
+        )
 
     if run_supervised:
         split_stratify = y_ml if task_type == "Classification" and y_ml.nunique(dropna=True) > 1 else None
@@ -714,7 +761,7 @@ with tabs[2]:
                 range_y=[0, 1],
                 title="Classification Algorithm Comparison",
             )
-            st.plotly_chart(fig_cmp, use_container_width=True)
+            st.plotly_chart(style_fig(fig_cmp, 400), use_container_width=True)
             plot_comment("Higher Accuracy and Macro-F1 is better. Macro-F1 treats all classes more evenly.")
 
             st.write(f"Confusion Matrix ({supervised_result['best_name']})")
@@ -729,7 +776,7 @@ with tabs[2]:
             )
             fig_cm.update_xaxes(title_text="Predicted")
             fig_cm.update_yaxes(title_text="Actual")
-            st.plotly_chart(fig_cm, use_container_width=True)
+            st.plotly_chart(style_fig(fig_cm, 470), use_container_width=True)
             plot_comment("Diagonal cells are correct predictions. Off-diagonal cells show confusion between classes.")
         else:
             results = supervised_result["results"]
@@ -749,7 +796,7 @@ with tabs[2]:
                 barmode="group",
                 title="Regression Algorithm Comparison",
             )
-            st.plotly_chart(fig_reg_cmp, use_container_width=True)
+            st.plotly_chart(style_fig(fig_reg_cmp, 400), use_container_width=True)
             plot_comment("Lower RMSE/MAE is better. Compare bars to pick the stronger regressor.")
 
             reg_plot_df = supervised_result["reg_plot_df"]
@@ -770,7 +817,7 @@ with tabs[2]:
                 y1=max_val,
                 line=dict(color="red", dash="dash"),
             )
-            st.plotly_chart(fig_reg, use_container_width=True)
+            st.plotly_chart(style_fig(fig_reg, 460), use_container_width=True)
             plot_comment("Points closer to the red diagonal line indicate more accurate predictions.")
 
         dl_col1, dl_col2 = st.columns(2)
@@ -792,7 +839,8 @@ with tabs[2]:
             )
 
     st.divider()
-    st.write("Process 2: Unsupervised Learning (Clustering)")
+    st.markdown("#### Process 2: Unsupervised Learning (KMeans)")
+    st.caption("Explore player groups and evaluate cluster quality.")
 
     cluster_input = X_ml.copy()
     cluster_input = cluster_input.replace([float("inf"), float("-inf")], pd.NA)
@@ -816,13 +864,15 @@ with tabs[2]:
         help="Try multiple k values and compare silhouette/elbow plots below.",
     )
     cluster_config = (pipeline_signature, int(k_value))
-    run_clustering = st.button(
-        "Run Clustering",
-        type="secondary",
-        use_container_width=True,
-        key="run_clustering_btn",
-        help="Click to run KMeans and refresh clustering visuals.",
-    )
+    run_cluster_col, _ = st.columns([1, 1.2])
+    with run_cluster_col:
+        run_clustering = st.button(
+            "Run Clustering",
+            type="secondary",
+            use_container_width=True,
+            key="run_clustering_btn",
+            help="Click to run KMeans and refresh clustering visuals.",
+        )
 
     if run_clustering:
         kmeans = KMeans(n_clusters=k_value, random_state=42, n_init=10)
@@ -890,7 +940,7 @@ with tabs[2]:
             title="KMeans Clusters projected with PCA",
             opacity=0.75,
         )
-        st.plotly_chart(fig_cluster, use_container_width=True)
+        st.plotly_chart(style_fig(fig_cluster, 500), use_container_width=True)
         plot_comment("Each color is a cluster. Compact and clearly separated groups indicate better clustering.")
 
         if not clustering_result["score_df"].empty:
@@ -905,7 +955,7 @@ with tabs[2]:
                 title="Silhouette Score vs k",
             )
             fig_k.update_xaxes(dtick=1)
-            st.plotly_chart(fig_k, use_container_width=True)
+            st.plotly_chart(style_fig(fig_k, 380), use_container_width=True)
             plot_comment("Higher silhouette is better; peak values suggest a better cluster count.")
 
             fig_elbow = px.line(
@@ -916,7 +966,7 @@ with tabs[2]:
                 title="Elbow Plot (Inertia vs k)",
             )
             fig_elbow.update_xaxes(dtick=1)
-            st.plotly_chart(fig_elbow, use_container_width=True)
+            st.plotly_chart(style_fig(fig_elbow, 380), use_container_width=True)
             plot_comment("Look for an elbow point where inertia reduction starts to flatten.")
 
         dlc1, dlc2 = st.columns(2)
