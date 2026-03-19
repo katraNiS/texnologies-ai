@@ -294,7 +294,7 @@ with tabs[0]:
         st.warning("Select at least one feature to continue.")
         st.stop()
 
-    prep_col1, prep_col2, prep_col3 = st.columns(3)
+    prep_col1, prep_col2, prep_col3, prep_col4 = st.columns(4)
     with prep_col1:
         missing_strategy = st.selectbox(
             "Missing-value handling",
@@ -320,14 +320,25 @@ with tabs[0]:
             ["None", "One-Hot", "Label Encoding"],
             help="One-Hot is safer for non-ordered categories (e.g., team names).",
         )
+    with prep_col4:
+        remove_duplicates = st.checkbox(
+            "Remove duplicate rows",
+            value=True,
+            help="Drop exact duplicate rows (same target + feature values) before EDA and training.",
+        )
 
-    setup_a, setup_b, setup_c = st.columns(3)
+    setup_a, setup_b, setup_c, setup_d = st.columns(4)
     setup_a.caption(f"Target: `{target_col}`")
     setup_b.caption(f"Features selected: `{len(selected_features)}`")
     setup_c.caption(f"Missing strategy: `{missing_strategy}`")
+    setup_d.caption(f"Remove duplicates: `{remove_duplicates}`")
 
     model_df = df_raw[[target_col] + selected_features].copy()
     model_df = apply_missing_values(model_df, missing_strategy)
+    rows_before_dedup = len(model_df)
+    if remove_duplicates:
+        model_df = model_df.drop_duplicates()
+    duplicates_removed = rows_before_dedup - len(model_df)
     eda_df = model_df.copy()
 
     X = model_df[selected_features].copy()
@@ -350,6 +361,8 @@ with tabs[0]:
     st.write("Processed data preview")
     st.dataframe(processed_df.head(), use_container_width=True)
     st.caption(f"Processed shape: {processed_df.shape[0]} rows x {processed_df.shape[1]} columns")
+    if remove_duplicates:
+        st.caption(f"Duplicate rows removed: {duplicates_removed}")
 
 with tabs[1]:
     st.subheader("Exploratory Data Analysis (EDA)")
@@ -556,6 +569,7 @@ with tabs[2]:
         missing_strategy,
         scaling_strategy,
         encoding_strategy,
+        bool(remove_duplicates),
         int(ml_df.shape[0]),
         int(ml_df.shape[1]),
     )
