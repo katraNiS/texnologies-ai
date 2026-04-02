@@ -2,7 +2,9 @@ import os # for file path handling
 import pandas as pd # for data manipulation
 import streamlit as st # for web app development
 from sklearn.preprocessing import MinMaxScaler, StandardScaler # for data normalization
-
+# temporary
+import plotly.express as px # for data visualization
+from sklearn.decomposition import PCA  # for dimensionality reduction
 #-------- Functions --------
 
 # Function for Scaling (MinMax)
@@ -62,6 +64,7 @@ st.dataframe(dataset.head())
 st.write(f"Dataset shape: {dataset.shape[0]} rows and {dataset.shape[1]} columns")
 st.write(f"Missing values per column:")
 st.dataframe(dataset.isnull().sum())
+st.write(f"Data types of each column:")
 st.dataframe(dataset.dtypes)
 
 # Columns for options
@@ -146,4 +149,38 @@ df_clean.to_csv("processed/df_clean.csv", index=False)
 st.subheader("Cleaned Data Preview")
 st.dataframe(df_clean.head())
 st.write(f"Dataset shape: {df_clean.shape[0]} rows and {df_clean.shape[1]} columns")
-st.success(f"Your data has been saved! You can proceed to EDA.")
+
+# Target Features and Target Variables (user picks)
+
+target_variable = st.selectbox("Select Target Variable", options=df_clean.columns.tolist(), key="target_variable")
+default_features = [col for col in df_clean.columns if col != target_variable] # set default 
+target_features = st.multiselect(
+    "Select Target Feature",
+    options=[col for col in df_clean.columns if col != target_variable],
+    default=default_features,
+    key="target_features"
+)
+
+if not target_features: # guard 
+    st.warning("Please select atleast one feature to continue.")
+    st.stop()
+    
+st.success(f"Your data has been saved!")
+if st.button(f"Press to continue to proceed to EDA."):
+    st.switch_page("pages/EDA.py")
+    
+#-------- Histogram --------
+
+#fig = px.histogram(df_clean[target_variable], x=target_variable)
+#st.plotly_chart(fig)
+
+#-------- Scatter Plot --------
+
+#fig = px.scatter(df_clean, x=target_variable, y=target_feature)
+#st.plotly_chart(fig)
+
+# target_feature = st.selectbox("Select a feature for Scatter Plot",
+#    options=[col for col in df_clean.columns if col != target_variable], 
+#    key="scatter_feature"
+#)
+
