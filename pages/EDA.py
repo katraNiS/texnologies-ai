@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 import streamlit as st
 import plotly.express as px
@@ -10,18 +9,23 @@ from sklearn.preprocessing import StandardScaler
 st.title("EDA - Exploratory Data Analysis")
 st.caption("Explore your dataset with various visualizations and insights.")
 
-#-------- Get the CSV --------
+#-------- Get the CSV from the session_state --------
 
-if not os.path.exists("processed/df_clean.csv"):
+df_clean = st.session_state.get("new_df_clean")
+df_model = st.session_state.get("new_df_model")
+
+if df_clean is None: # guard for the df_clean
     st.warning("Please complete Data Loading first.")
     st.stop()
 
-df_clean = pd.read_csv("processed/df_clean.csv")
+if df_model is None: # guard for the df_model
+    st.warning("Please complete Data Loading first.")
+    st.stop()
 
-#-------- Get the session state --------
+#-------- Get the targets from session_state --------
 
-target_variable = st.session_state.get("target_variable") # get the target_variable from the "Data_Loading" page
-target_features = st.session_state.get("target_features") # get the target_features from the "Data_Loading" page
+target_variable = st.session_state.get("saved_target_variable") # get the target_variable from the "Data_Loading" page
+target_features = st.session_state.get("saved_target_features") # get the target_features from the "Data_Loading" page
 
 #-------- Guards for the targets --------
 
@@ -38,8 +42,17 @@ if target_features is None:
 fig = px.histogram(df_clean[target_variable], x=target_variable)
 st.plotly_chart(fig)
 
+#-------- Box Plot --------
+
+fig = px.box(df_clean[target_variable], x= target_variable)
+st.plotly_chart(fig)
+
 #-------- Scatter Plot --------
 
 fig = px.scatter(df_clean, x=target_variable, y=target_features[0])
 st.plotly_chart(fig)
 
+#-------- Correlation Heatmap --------
+
+fig = px.imshow(df_clean, x= target_variable, y=target_features)
+#st.plotly_chart(fig)
