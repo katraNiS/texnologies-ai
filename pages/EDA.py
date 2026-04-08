@@ -21,7 +21,7 @@ if df_clean is None: # guard for the df_clean
 if df_model is None: # guard for the df_model
     st.warning("Please complete Data Loading first.")
     st.stop()
-
+    
 #-------- Get the targets from session_state --------
 
 target_variable = st.session_state.get("saved_target_variable") # get the target_variable from the "Data_Loading" page
@@ -39,20 +39,53 @@ if target_features is None:
     
 #-------- Histogram --------
 
-fig = px.histogram(df_clean[target_variable], x=target_variable)
+st.subheader("Histogram")
+
+prev_variable = st.selectbox("Select a Variable to Preview", 
+    options=df_clean.columns.tolist(), key="hist_variable")
+
+fig = px.histogram(df_clean[prev_variable], x=prev_variable)
 st.plotly_chart(fig)
 
 #-------- Box Plot --------
 
-fig = px.box(df_clean[target_variable], x= target_variable)
+st.subheader("Box Plot")
+st.caption("The box plot shows the same variable as the histogram above.")
+
+fig = px.box(df_clean[prev_variable], x= prev_variable)
 st.plotly_chart(fig)
 
 #-------- Scatter Plot --------
 
-fig = px.scatter(df_clean, x=target_variable, y=target_features[0])
+st.subheader("Scatter Plot")
+
+scatter_variable = st.selectbox("Select a Variable to Preview", 
+    options=df_clean.columns.tolist(), key="scatter_variable")
+scatter_features = st.selectbox("Select a Feature to Preview",
+    options=df_clean.columns.tolist(), key="scatter_features")
+
+fig = px.scatter(df_clean, x=scatter_variable, y=scatter_features)
 st.plotly_chart(fig)
 
 #-------- Correlation Heatmap --------
 
-fig = px.imshow(df_clean, x= target_variable, y=target_features)
-#st.plotly_chart(fig)
+st.subheader("Correlation Heatmap")
+correlation_matrix = df_clean.select_dtypes(include='number').corr()
+fig = px.imshow(correlation_matrix, x=correlation_matrix.columns, y=correlation_matrix.columns, text_auto=True, aspect="auto")
+st.plotly_chart(fig)
+
+#-------- PCA --------
+
+st.subheader("PCA")
+categorical_cols = df_clean.select_dtypes(include='object').columns.tolist()
+pca_color = st.selectbox("Color PCA by", options=categorical_cols)
+
+numeric_data = df_clean.select_dtypes(include="number").dropna()
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(numeric_data)
+
+pca = PCA(n_components=2)
+pca_result = pca.fit_transform(scaled_data)
+
+fig = px.scatter(x=pca_result[:,0], y=pca_result[:,1], color=df_clean.loc[numeric_data.index, pca_color], labels={'x': 'PC1', 'y': 'PC2'})
+st.plotly_chart(fig)

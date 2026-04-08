@@ -106,13 +106,13 @@ deleted_rows = len(dataset) - len(df_clean) # counting the deleted rows
 st.info(f"Deleted {deleted_rows} rows where 'deleted' column is 1 (inactive listings).") 
 
 rows_before_filter = len(df_clean)
-df_clean = df_clean[(df_clean['res_price'] >= 30000) & (df_clean['res_price'] < 2670000)] # Deleting the rows where the price isn't between 30.000 and 2.670.000
+df_clean = df_clean[(df_clean['res_price'] >= 0) & (df_clean['res_price'] < 807500)] # Deleting the rows where the price isn't between 0 and 807500
 price_filter_deleted_rows = rows_before_filter - len(df_clean) # counting the deleted rows from the price filter
-st.info(f"Deleted {price_filter_deleted_rows} rows where 'res_price' is less than 30.000 or greater than 2.670.000.")
+st.info(f"Deleted {price_filter_deleted_rows} rows where 'res_price' is less than 0 or greater than 807500.")
 
 freq = df_clean['res_address'].value_counts() # Counting how many times each address appears so.. 
 df_clean['neighborhood'] = df_clean['res_address'].where( #..if it appears 10 or more i keep the name..
-    df_clean['res_address'].isin(freq[freq >= 10].index), other='Other' #..if it appears less i replace it with "Other"
+    df_clean['res_address'].isin(freq[freq >= 20].index), other='Other' #..if it appears less i replace it with "Other"
 )
 df_clean = df_clean.drop(columns=['parking', 'res_price_sqr', 'deleted', 'deleted_at', 'res_address', 'location_name', 'res_date']) # Dropping the columns i won't need
 st.info(f"Created a new column 'neighborhood' based on 'res_address' and dropped unnecessary columns.")
