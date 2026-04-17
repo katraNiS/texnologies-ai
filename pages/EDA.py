@@ -89,3 +89,5 @@ pca_result = pca.fit_transform(scaled_data)
 
 fig = px.scatter(x=pca_result[:,0], y=pca_result[:,1], color=df_clean.loc[numeric_data.index, pca_color], labels={'x': 'PC1', 'y': 'PC2'})
 st.plotly_chart(fig)
+
+st.dataframe(pd.DataFrame(pca.components_, columns=numeric_data.columns, index=['PC1', 'PC2']))
