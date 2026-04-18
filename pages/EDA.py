@@ -91,3 +91,8 @@ fig = px.scatter(x=pca_result[:,0], y=pca_result[:,1], color=df_clean.loc[numeri
 st.plotly_chart(fig)
 
 st.dataframe(pd.DataFrame(pca.components_, columns=numeric_data.columns, index=['PC1', 'PC2']))
+
+if st.button(f"Press to continue to proceed to the ML Pipeline."):
+    st.switch_page("pages/ML_Pipeline.py")
+    
+# na valw notes sto page 
