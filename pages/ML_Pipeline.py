@@ -6,6 +6,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.cluster import KMeans
+
 
 #-------- Title --------
 
@@ -127,3 +129,8 @@ st.dataframe(comparison)
 #----------------------------
 #-------- Clustering --------
 #----------------------------
+
+user_clusters = st.slider("Select how many clusters you want:", min_value = 1, max_value = 12, value = 4, step = 1)
+
+kmeans = KMeans(n_clusters=user_clusters, random_state=0, n_init="auto").fit(x)
+kmeans.labels_
