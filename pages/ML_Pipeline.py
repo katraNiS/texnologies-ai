@@ -5,8 +5,10 @@ import plotly.express as px
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.cluster import KMeans
+from sklearn.metrics import davies_bouldin_score, mean_squared_error, r2_score, silhouette_score
+from sklearn.cluster import KMeans, DBSCAN
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 
 #-------- Title --------
@@ -50,6 +52,8 @@ if target_variable not in df_model.columns:
 #----------------------------
 #-------- Regression --------
 #----------------------------
+
+st.title("Regression Model Comparison")
 
 x = df_model.drop(columns=target_variable) # drop the target variable from the features
 y = df_model[target_variable]
@@ -118,7 +122,7 @@ elif user_regression_model == "Random Forest":
 
 #-------- Model Comparison --------    
 
-st.subheader("Model Comparison")
+st.subheader("Regression Model Comparison")
 comparison = pd.DataFrame({
     'Model': ['Linear Regression', 'Random Forest'],
     'RMSE': [lr_rmse, rf_rmse],
@@ -130,7 +134,81 @@ st.dataframe(comparison)
 #-------- Clustering --------
 #----------------------------
 
-user_clusters = st.slider("Select how many clusters you want:", min_value = 1, max_value = 12, value = 4, step = 1)
+st.divider()
+
+st.title("Clustering Model Comparison")
+
+x = x.dropna()
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(x)
+
+pca = PCA(n_components=2)
+pca_result = pca.fit_transform(scaled_data)
+
+#-------- Clustering with K-Means -------- 
+
+st.subheader("Clustering with K-Means")
+
+user_clusters = st.slider("Select how many clusters you want:", min_value = 2, max_value = 12, value = 4, step = 1)
 
 kmeans = KMeans(n_clusters=user_clusters, random_state=0, n_init="auto").fit(x)
-kmeans.labels_
+kmeans_silhouette = silhouette_score(x, kmeans.labels_)
+kmeans_db = davies_bouldin_score(x, kmeans.labels_)
+
+st.write("KMeans Scores:")
+st.write("Silhouette Score:", kmeans_silhouette)
+st.write("Davies-Bouldin Score:", kmeans_db)
+
+#-------- Kmeans Scatter Plot --------
+
+st.subheader("KMeans Cluster")
+fig = px.scatter(x=pca_result[:,0], y=pca_result[:,1],
+                 color=kmeans.labels_.astype(str)
+                 , labels={'x': 'PC1', 'y': 'PC2'})
+st.plotly_chart(fig)
+
+#-------- Clustering with DBSCAN --------
+
+st.subheader("Clustering with DBSCAN")
+
+user_eps = st.slider("Select the epsilon value:", min_value = 0.5, max_value = 5.0, value = 1.0, step = 0.5)
+user_samples = st.slider("Select the minimum samples value:", min_value = 2, max_value = 20, value = 5, step = 1)
+
+dbscan = DBSCAN(eps=user_eps, min_samples=user_samples).fit(x)
+
+
+
+n_clusters = len(set(dbscan.labels_)) - (1 if -1 in dbscan.labels_ else 0)
+
+dbscan_silhouette = None
+dbscan_db = None
+
+if n_clusters < 2:
+    st.warning("The clusters must be more than 2!")
+
+else:
+    dbscan_silhouette = silhouette_score(x, dbscan.labels_)
+    dbscan_db = davies_bouldin_score(x, dbscan.labels_)
+    st.write("DBSCAN Scores:")
+    st.write("Silhouette Score:", dbscan_silhouette)
+    st.write("DBSCAN Score:", dbscan_db)
+    
+    #-------- DBSCAN Scatter Plot --------
+    
+    st.subheader("DBSCAN Cluster")
+    fig = px.scatter(x=pca_result[:,0], y=pca_result[:,1],
+                 color=dbscan.labels_.astype(str)
+                 , labels={'x': 'PC1', 'y': 'PC2'})
+    st.plotly_chart(fig)
+
+#-------- Model Comparison --------    
+
+
+
+st.subheader("Clustering Model Comparison")
+comparison = pd.DataFrame({
+    'Model': ['Kmeans', 'DBSCAN'],
+    'Silhouette Score': [kmeans_silhouette, dbscan_silhouette],
+    'Davies Bouldin Score': [kmeans_db, dbscan_db]
+})
+st.dataframe(comparison)
