@@ -75,6 +75,7 @@ if user_regression_model == "Random Forest":
     user_n_estimators = st.slider("Select how many trees you want:", min_value = 10, max_value = 200, value = 100, step = 10)
     user_max_depth = st.slider("Select the depth of the trees:", min_value = 2, max_value = 20, value = 10, step = 1)
 
+# random_state=42 ensures reproducible results — same split every time the code runs
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=42)
 
 #-------- Linear Regression --------
@@ -88,6 +89,7 @@ lr_r2 = r2_score(y_test, lr_y_pred)
 
 #-------- Random Forest --------
 
+# oob_score=True enables out-of-bag evaluation — uses data not seen by each tree as a built-in validation method
 rf_model = RandomForestRegressor(
     n_estimators = user_n_estimators,
     random_state=42,
@@ -138,10 +140,12 @@ st.divider()
 
 st.title("Clustering Model Comparison")
 
+# Dropping NaN values because KMeans and DBSCAN cannot handle missing data
 x = x.dropna()
 scaler = StandardScaler()
 scaled_data = scaler.fit_transform(x)
 
+# PCA reduces high-dimensional data to 2D so we can visualize the clustering results in a scatter plot
 pca = PCA(n_components=2)
 pca_result = pca.fit_transform(scaled_data)
 
@@ -163,7 +167,7 @@ st.write("Davies-Bouldin Score:", kmeans_db)
 
 st.subheader("KMeans Cluster")
 fig = px.scatter(x=pca_result[:,0], y=pca_result[:,1],
-                 color=kmeans.labels_.astype(str)
+                 color=kmeans.labels_.astype(str) # Converting labels to string so plotly treats them as discrete categories (distinct colors) instead of a continuous scale
                  , labels={'x': 'PC1', 'y': 'PC2'})
 st.plotly_chart(fig)
 
@@ -175,8 +179,6 @@ user_eps = st.slider("Select the epsilon value:", min_value = 0.5, max_value = 5
 user_samples = st.slider("Select the minimum samples value:", min_value = 2, max_value = 20, value = 5, step = 1)
 
 dbscan = DBSCAN(eps=user_eps, min_samples=user_samples).fit(x)
-
-
 
 n_clusters = len(set(dbscan.labels_)) - (1 if -1 in dbscan.labels_ else 0)
 
@@ -202,8 +204,6 @@ else:
     st.plotly_chart(fig)
 
 #-------- Model Comparison --------    
-
-
 
 st.subheader("Clustering Model Comparison")
 comparison = pd.DataFrame({

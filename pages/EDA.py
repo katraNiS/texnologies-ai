@@ -80,7 +80,10 @@ st.subheader("PCA")
 categorical_cols = df_clean.select_dtypes(include='object').columns.tolist()
 pca_color = st.selectbox("Color PCA by", options=categorical_cols)
 
+# Dropping NaN values because PCA cannot handle missing data
 numeric_data = df_clean.select_dtypes(include="number").dropna()
+
+# StandardScaler before PCA — necessary because PCA is sensitive to feature scale. Without scaling, features with larger values (e.g. res_price) would dominate the analysis
 scaler = StandardScaler()
 scaled_data = scaler.fit_transform(numeric_data)
 
@@ -88,11 +91,10 @@ pca = PCA(n_components=2)
 pca_result = pca.fit_transform(scaled_data)
 
 fig = px.scatter(x=pca_result[:,0], y=pca_result[:,1], color=df_clean.loc[numeric_data.index, pca_color], labels={'x': 'PC1', 'y': 'PC2'})
+# Using numeric_data.index to match rows — after dropna() some rows may have been removed, so we need the same rows from df_clean for coloring
 st.plotly_chart(fig)
 
 st.dataframe(pd.DataFrame(pca.components_, columns=numeric_data.columns, index=['PC1', 'PC2']))
 
 if st.button(f"Press to continue to proceed to the ML Pipeline."):
     st.switch_page("pages/ML_Pipeline.py")
-    
-# na valw notes sto page 

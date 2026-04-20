@@ -8,6 +8,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler # for data normal
 def apply_minmax(df):
     scaler = MinMaxScaler()
     numeric_cols = df.select_dtypes(include='number').columns.tolist()
+    # Excluding res_price from scaling because it's our target variable — we need its original values for prediction
     numeric_cols = [col for col in numeric_cols if col != 'res_price']
     df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
     return df
@@ -62,6 +63,7 @@ dataset = pd.read_csv(uploaded_file)
 
 
 # Displaying the Dataset
+
 st.dataframe(dataset.head())
 st.write(f"Dataset shape: {dataset.shape[0]} rows and {dataset.shape[1]} columns")
 st.write(f"Missing values per column:")
@@ -71,6 +73,7 @@ st.dataframe(dataset.dtypes)
 
 
 # Columns for options
+
 col1, col2, col3 = st.columns(3)
 
 with col1: 
@@ -122,6 +125,7 @@ st.info(f"Created a new column 'neighborhood' based on 'res_address' and dropped
 
 # Cases for the missing_strategy
 
+
 # We calculate the number of missing values before handling them, so we can inform the user about how many values were dropped or filled.
 before_nan_handling = len(df_clean)
 nan_values = df_clean.isnull().sum().sum()
@@ -156,12 +160,17 @@ before_duplicates = len(df_clean)
 if remove_duplicates:
     df_clean = df_clean.drop_duplicates()
     st.info(f"Removed {before_duplicates - len(df_clean)} duplicate rows.")
+
+
 #-------- Scaling Strategy --------
 
-df_model = df_clean.copy() # we want to keep our original clean dataset for eda, so for encoding we create a copy
 
+# Creating a copy for scaling/encoding so df_clean stays unmodified — we need df_clean (original values) for EDA visualizations
+
+df_model = df_clean.copy()
 
 # Cases for the scaling_strategy
+
 if scaling_strategy == "None": # if the users wants no changes just move on
     pass
 elif scaling_strategy == "MinMax":
@@ -172,6 +181,8 @@ elif scaling_strategy == "Standard(Z-Score)":
 
 #-------- Encoding --------
 
+# One-hot encoding: ML models can't work with string values, so we convert categorical columns to numeric (0/1)
+
 categorical_cols = df_model.select_dtypes(include=['object']).columns.tolist()
 df_model = pd.get_dummies(df_model, columns=categorical_cols)
 
@@ -179,6 +190,7 @@ df_model = pd.get_dummies(df_model, columns=categorical_cols)
 #-------- Preparation for EDA --------
 
 # Saving the dataframe in the session state
+# Using session state to pass data between pages — avoids writing to disk and works with any dataset without needing a database
 
 st.session_state["new_df_clean"] = df_clean
 st.session_state["new_df_model"] = df_model
@@ -209,8 +221,11 @@ if not target_features: # guard
     st.warning("Please select atleast one feature to continue.")
     st.stop()
 
-st.session_state["saved_target_variable"] = target_variable # save the target_variable in session state for EDA page
-st.session_state["saved_target_features"] = target_features # save the target_features in session state for EDA page
+
+# Saving with "saved_" prefix to avoid conflicts with widget keys — widget keys can reset during page navigation
+
+st.session_state["saved_target_variable"] = target_variable 
+st.session_state["saved_target_features"] = target_features 
 
 st.success(f"Your data has been saved!")
 if st.button(f"Press to continue to proceed to EDA."):
