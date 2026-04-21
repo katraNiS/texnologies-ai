@@ -5,11 +5,11 @@ import plotly.express as px
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import davies_bouldin_score, mean_squared_error, r2_score, silhouette_score
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, accuracy_score, f1_score, confusion_matrix
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
 
 #-------- Title --------
 
@@ -84,6 +84,7 @@ lr_model = LinearRegression()
 lr_model.fit(x_train,y_train)
 lr_y_pred = lr_model.predict(x_test)
 lr_rmse = np.sqrt(mean_squared_error(y_test, lr_y_pred))
+lr_mae = mean_absolute_error(y_test, lr_y_pred)
 lr_r2 = r2_score(y_test, lr_y_pred)
 
 
@@ -100,6 +101,7 @@ rf_model = RandomForestRegressor(
 rf_model.fit(x_train, y_train)
 rf_y_pred = rf_model.predict(x_test)
 rf_rmse = np.sqrt(mean_squared_error(y_test, rf_y_pred))
+rf_mae = mean_absolute_error(y_test, rf_y_pred)
 rf_r2 = r2_score(y_test, rf_y_pred)
 
 
@@ -108,6 +110,7 @@ rf_r2 = r2_score(y_test, rf_y_pred)
 if user_regression_model == "Linear Regression":
     st.subheader(" Linear Regression Measures")
     st.write("Root Mean Squared Error:", lr_rmse)
+    st.write("Mean Absolute Error:", lr_mae)
     st.write("R2 score:", lr_r2)
     fig = px.scatter(x=y_test, y=lr_y_pred,
                     labels={'x': 'Actual', 'y':'Predicted'})
@@ -116,6 +119,7 @@ if user_regression_model == "Linear Regression":
 elif user_regression_model == "Random Forest":
     st.subheader("Random Forest Measures")
     st.write("Root Mean Squared Error:", rf_rmse)
+    st.write("Mean Absolute Error:", rf_mae)
     st.write("R2 score:", rf_r2)
     fig = px.scatter(x=y_test, y=rf_y_pred,
                     labels={'x': 'Actual', 'y':'Predicted'})
@@ -128,87 +132,96 @@ st.subheader("Regression Model Comparison")
 comparison = pd.DataFrame({
     'Model': ['Linear Regression', 'Random Forest'],
     'RMSE': [lr_rmse, rf_rmse],
+    'MAE': [lr_mae, rf_mae],
     'R2': [lr_r2, rf_r2]
 })
 st.dataframe(comparison)
 
 #----------------------------
-#-------- Clustering --------
+#----- Classification -------
 #----------------------------
 
 st.divider()
 
-st.title("Clustering Model Comparison")
+st.title("Classification Model Comparison")
 
-# Dropping NaN values because KMeans and DBSCAN cannot handle missing data
-x = x.dropna()
-scaler = StandardScaler()
-scaled_data = scaler.fit_transform(x)
+y_class = pd.qcut(y, q=3, labels=["Cheap", "Medium", "Expensive"]) # convert the regression target into 3 classes
 
-# PCA reduces high-dimensional data to 2D so we can visualize the clustering results in a scatter plot
-pca = PCA(n_components=2)
-pca_result = pca.fit_transform(scaled_data)
+st.subheader("Model Selection")
+user_classification_model = st.selectbox("Select a Classification Model", options=["Decision Tree", "K-Nearest Neighbors"], key="class_model")
 
-#-------- Clustering with K-Means -------- 
 
-st.subheader("Clustering with K-Means")
+#-------- User's Parameters --------
 
-user_clusters = st.slider("Select how many clusters you want:", min_value = 2, max_value = 12, value = 4, step = 1)
 
-kmeans = KMeans(n_clusters=user_clusters, random_state=0, n_init="auto").fit(x)
-kmeans_silhouette = silhouette_score(x, kmeans.labels_)
-kmeans_db = davies_bouldin_score(x, kmeans.labels_)
+# for both models
+test_size = st.slider("Test size", min_value=0.1, max_value=0.5, value=0.2, step=0.05, key="class_test_size")
 
-st.write("KMeans Scores:")
-st.write("Silhouette Score:", kmeans_silhouette)
-st.write("Davies-Bouldin Score:", kmeans_db)
+# defaults
+user_max_depth_class = 10
+user_n_neighbors = 5
 
-#-------- Kmeans Scatter Plot --------
-
-st.subheader("KMeans Cluster")
-fig = px.scatter(x=pca_result[:,0], y=pca_result[:,1],
-                 color=kmeans.labels_.astype(str) # Converting labels to string so plotly treats them as discrete categories (distinct colors) instead of a continuous scale
-                 , labels={'x': 'PC1', 'y': 'PC2'})
-st.plotly_chart(fig)
-
-#-------- Clustering with DBSCAN --------
-
-st.subheader("Clustering with DBSCAN")
-
-user_eps = st.slider("Select the epsilon value:", min_value = 0.5, max_value = 5.0, value = 1.0, step = 0.5)
-user_samples = st.slider("Select the minimum samples value:", min_value = 2, max_value = 20, value = 5, step = 1)
-
-dbscan = DBSCAN(eps=user_eps, min_samples=user_samples).fit(x)
-
-n_clusters = len(set(dbscan.labels_)) - (1 if -1 in dbscan.labels_ else 0)
-
-dbscan_silhouette = None
-dbscan_db = None
-
-if n_clusters < 2:
-    st.warning("The clusters must be more than 2!")
-
-else:
-    dbscan_silhouette = silhouette_score(x, dbscan.labels_)
-    dbscan_db = davies_bouldin_score(x, dbscan.labels_)
-    st.write("DBSCAN Scores:")
-    st.write("Silhouette Score:", dbscan_silhouette)
-    st.write("DBSCAN Score:", dbscan_db)
+if user_classification_model == "Decision Tree":
+    # for decision tree
+    st.text("For Decision Tree:")
+    user_max_depth_class = st.slider("Select the depth of the tree:", min_value = 2, max_value = 20, value = 10, step = 1, key="max_depth_class")
     
-    #-------- DBSCAN Scatter Plot --------
-    
-    st.subheader("DBSCAN Cluster")
-    fig = px.scatter(x=pca_result[:,0], y=pca_result[:,1],
-                 color=dbscan.labels_.astype(str)
-                 , labels={'x': 'PC1', 'y': 'PC2'})
+elif user_classification_model == "K-Nearest Neighbors":
+    # for KNN
+    st.text("For K-Nearest Neighbors:")
+    user_n_neighbors = st.slider("Select the number of neighbors:", min_value = 1, max_value = 20, value = 5, step = 1, key="n_neighbors")
+
+x_train_class, x_test_class, y_train_class, y_test_class = train_test_split(x, y_class, test_size=test_size, random_state=42)
+        
+#-------- Decision Tree --------
+
+dt_model = DecisionTreeClassifier(
+    max_depth=user_max_depth_class,
+    random_state=42
+)
+dt_model.fit(x_train_class, y_train_class)
+dt_y_pred = dt_model.predict(x_test_class)
+dt_accuracy = accuracy_score(y_test_class, dt_y_pred)
+dt_f1 = f1_score(y_test_class, dt_y_pred, average='weighted')
+
+#-------- K-Nearest Neighbors --------
+
+knn_model = KNeighborsClassifier(n_neighbors=user_n_neighbors)
+knn_model.fit(x_train_class, y_train_class)
+knn_y_pred = knn_model.predict(x_test_class)
+knn_accuracy = accuracy_score(y_test_class, knn_y_pred)
+knn_f1 = f1_score(y_test_class, knn_y_pred, average='weighted')
+
+#-------- Accuracy & Visualizations --------
+
+if user_classification_model == "Decision Tree":
+    st.subheader("Decision Tree Measures")
+    st.write("Accuracy:", dt_accuracy)
+    st.write("F1 Score:", dt_f1)
+    cm = confusion_matrix(y_test_class, dt_y_pred)
+    fig = px.imshow(cm, text_auto=True, 
+                x=["Cheap", "Medium", "Expensive"],
+                y=["Cheap", "Medium", "Expensive"],
+                labels={'x': 'Predicted', 'y': 'Actual'})
+    st.plotly_chart(fig)
+
+elif user_classification_model == "K-Nearest Neighbors":
+    st.subheader("K-Nearest Neighbors Measures")
+    st.write("Accuracy:", knn_accuracy)
+    st.write("F1 Score:", knn_f1)
+    cm = confusion_matrix(y_test_class, knn_y_pred)
+    fig = px.imshow(cm, text_auto=True, 
+                x=["Cheap", "Medium", "Expensive"],
+                y=["Cheap", "Medium", "Expensive"],
+                labels={'x': 'Predicted', 'y': 'Actual'})
     st.plotly_chart(fig)
 
 #-------- Model Comparison --------    
 
-st.subheader("Clustering Model Comparison")
+st.subheader("Classification Model Comparison")
 comparison = pd.DataFrame({
-    'Model': ['Kmeans', 'DBSCAN'],
-    'Silhouette Score': [kmeans_silhouette, dbscan_silhouette],
-    'Davies Bouldin Score': [kmeans_db, dbscan_db]
+    'Model': ['Decision Tree', 'K-Nearest Neighbors'],
+    'Accuracy': [dt_accuracy, knn_accuracy],
+    'F1 Score': [dt_f1, knn_f1]
 })
 st.dataframe(comparison)
