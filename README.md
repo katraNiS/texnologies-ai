@@ -3,7 +3,7 @@
 Web application για ανάλυση και πρόβλεψη τιμών ακινήτων στην Ελλάδα, χρησιμοποιώντας Machine Learning.
 
 ## Dataset
-Greece Property Listings - Kaggle (link)
+Greece Property Listings - Kaggle ((https://www.kaggle.com/datasets/argyrisanastopoulos/greece-property-listings/data)
 
 ## Τεχνολογίες
 - Python
